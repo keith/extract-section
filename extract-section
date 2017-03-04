@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import argparse
+import os
+import r2pipe
+import sys
+
+
+def find_section(section_name, payload):
+    for blob in payload:
+        name = format_section(blob["name"])
+        if name == section_name:
+            return blob
+
+    return None
+
+
+def format_section(section_name):
+    return section_name.split(".")[-1].strip("_").lower()
+
+
+def is_binary(path):
+    return (os.path.exists(path)
+            and not os.path.islink(path)
+            and os.access(path, os.X_OK))
+
+
+def main(binary, section_name, output_path):
+    radare = r2pipe.open(filename=binary)
+    output = radare.cmdj("iSj")
+    section = find_section(section_name, output)
+    if not section:
+        print("Couldn't find section named {}".format(section_name),
+              file=sys.stderr)
+        sys.exit(1)
+
+    address = section["paddr"]
+    if not address:
+        print("Couldn't find address for section {}".format(section),
+              file=sys.stderr)
+        sys.exit(1)
+
+    radare.cmd("s {}".format(address))
+    radare.cmd("Sd {}".format(output_path))
+    radare.quit()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("binary")
+    parser.add_argument("section")
+    parser.add_argument("output")
+    arguments = parser.parse_args()
+
+    binary = arguments.binary
+    if not is_binary(binary):
+        print("'{}' is not a valid binary".format(binary), file=sys.stderr)
+        sys.exit(1)
+
+    main(binary, format_section(arguments.section), arguments.output)
