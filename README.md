@@ -13,5 +13,5 @@ $ extract-section path/to/binary entitlements output.plist
 ## Installation
 
 ```sh
-brew install keith/formulae/extract-section
+$ brew install keith/formulae/extract-section
 ```
